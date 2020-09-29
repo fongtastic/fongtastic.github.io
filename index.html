@@ -1,0 +1,559 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 194-26 Project 2</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 194-26: Computational Photography, Fall 2020</h1>
+<h1 align="middle">Project 1: Fun with Filters and Frequencies</h1>
+<h2 align="middle">Michelle Fong, CS194-26-ael</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>In this project, I used various convolutions and filtering in order to produce gradient maps of input images. I also appled these methods to blur, straighten, and sharpen images. I also explored image manipulation further by creating hybrid images and blended images, with the help of low / high-pass filtering and Gaussian / Laplacian stacks. </p>
+
+<h2 align="middle">Part 1: Fun with Filters</h2>
+
+<h3 align="middle">Part 1.1: Finite Difference Operator</h3>
+
+<p>This section of the code convolves the input image with the finite difference filter. I used two convolutions, one for dx and one for dy, and combined their magnitudes to produce the gradient magnitude image. The gradient magnitude is calculated as sqrt(gradient_x**2 + gradient_y). Afterward, I binarized the gradient magnitude using a threshold. I experimented with various thresholds and found that .25 worked best to give a clear outline of the camera and the man while not detecting noise.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/cameraman.png" align="middle" width="400px"/>
+        <figcaption align="middle">original "cameraman"</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="output/dx_cameraman.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">"cameraman" gradient w.r.t. x</figcaption>
+      </td>
+      <td>
+        <img src="output/dy_cameraman.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">"cameraman" gradient w.r.t. y</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/partial_cameraman.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">"cameraman" gradient magnitude</figcaption>
+      </td>
+      <td>
+        <img src="output/binary_cameraman.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">"cameraman" binarized</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 1.2: Derivative of Gaussian Filter</h3>
+
+<p>Here I took a length-5 1D Gaussian filter courtesy of Stack Overflow and multiplied it with its transpose in order to derive a 2D Gaussian filter. This then only requires a single convolution to produce the same result as the previous part which required two convolutions. As above, I binarized the gradient magnitude using a threshold which I found to be .1 here, which is lower than the previous. Given these different thresholds, I am able to produce a result very similar to before. However, differences I notice are that the image binarized from the Gaussian has much thicker lines and ever so slightly less noise than the finite difference operator one.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="output/dx_gauss.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Derivative of Gaussian w.r.t. x</figcaption>
+      </td>
+      <td>
+        <img src="output/dy_gauss.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Derivative of Gaussian w.r.t. y</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/grad_gauss.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Gradient magnitude of Gaussian</figcaption>
+      </td>
+      <td>
+        <img src="output/binary_cameraman_gaussian.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">"cameraman" binarized from Gaussian</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 1.3: Image Straightening</h3>
+
+<p>I went about writing the code for straightening images by first thinking about the search radius. I originally tried a search from [-20, 20] but found that the rotation was much greater than what it is needed for the average tilted picture, and decided that a search range of [-10, 10] would still succeed in most use cases while only taking half of the time. I iterated through all of the selected angles (chosen with approximate step size of 2) and I computed the gradient angle by convolving the image with the Gaussian filter. I then summed up all angles close to [0, 90, 180, 270] in the image. I included the results of my algorithm on the example image "facade" as well as three images of my own choosing. The park and field images are success cases whereas inception is a failure case. Inception fails because my search radius is not big enough for how tilted the image is.  </p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/facade.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "facade"</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_facade_og.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for original "facade"</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/straight_facade.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Straight "facade" (angle = -3)</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_facade.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for straight "facade"</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="exampls/park.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "park"</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_park_og.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for original "park"</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/straight_park.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Straight "park" (angle = -2)</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_park.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for straight "park"</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="exampls/field.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "field"</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_field_og.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for original "field"</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/straight_field.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Straight "field" (angle = -6)</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_field.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for original "field"</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="exampls/inception.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "inception"</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_inception_og.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for original "inception"</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/straight_inception.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Straight "inception" (angle = -10)</figcaption>
+      </td>
+      <td>
+        <img src="output/hist_inception.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Histogram for straight "inception"</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h2 align="middle">Part 2: Fun with Frequencies</h2>
+
+<h3 align="middle">Part 2.1: Image Sharpening</h3>
+
+<p>I sharpened these images by applying a low pass filter to the original image and subtracting it from the original. Additionally, I add back in some of the high frequencies. This is known as the unsharp mask filter. To do this, I used a Gaussian filter of size 5 with sigma=1 as created for 1.2. The results of my algorithm on the Taj Mahal are shown below. I also picked a sharpened image of a pug, filtered it with the Gaussian to create a blurred version, and recovered the original sharpness.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/taj.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "taj"</figcaption>
+      </td>
+      <td>
+        <img src="output/taj_blur.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Sharpened "taj"</figcaption>
+      </td>
+      <td>
+        <img src="output/taj_sharp.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Sharpened "taj"</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="output/pug.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Original "pug"</figcaption>
+      </td>
+      <td>
+        <img src="output/pug_blur.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Blurred "pug"</figcaption>
+      </td>
+      <td>
+        <img src="output/pug_sharpened.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Sharpened "pug"</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br>
+
+<h3 align="middle">Part 2.2: Hybrid Images</h3>
+<p>I also implemented hybrid images using the starter code for alignment. The idea behind these hybrid images is that it looks like one image close up and another from far away. This is because our vision sees different frequencies depending on how we are looking at something. Here, I implemented my own low pass and high pass filters. For the example given, I put Derek through the low pass filter (2D Gaussian as constructed earlier) and I put Nutmeg through the high pass filter (created by subtracting the Gaussian filtered (blurred) image from the original), and finally I averaged the resulting images to produce my final result. </p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/hybrid_python/DerekPicture.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Derek</figcaption>
+      </td>
+      <td>
+        <img src="exampls/hybrid_python/nutmeg.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Nutmeg</figcaption>
+      </td>
+      <td>
+        <img src="output/hybrid_best.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Hybrid derek and nutmeg</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="output/input1_F.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Derek fourier</figcaption>
+      </td>
+      <td>
+        <img src="output/input2_f.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Nutmeg fourier</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="output/filter1_f.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Filtered Derek fourier</figcaption>
+      </td>
+      <td>
+        <img src="output/filter2_f.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Filtered Nutmeg fourier</figcaption>
+      </td>
+      <td>
+        <img src="output/hybrid_f.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Hybrid Derek and Nutmeg fourier</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p> I also applied the same process to pictures of my own selection. Here I made a hybrid of Jungkook (low pass) and Taehyung (high pass) from BTS.</p>
+<div>
+  <table>
+    <tr>
+      <td>
+        <img src="exampls/jungkook.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Jungkook</figcaption>
+      </td>
+      <td>
+        <img src="exampls/taehyung.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Taehyung</figcaption>
+      </td>
+      <td>
+        <img src="output/hybrid_taekook.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Hybrid Jungkook and Taehyung</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>This is a hybrid of a chihuahua (high pass) and a blueberry muffin (low pass).</p>
+<div>
+  <table>
+    <tr>
+      <td>
+        <img src="exampls/chihuahua.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Chihuahua</figcaption>
+      </td>
+      <td>
+        <img src="exampls/muffin.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Muffin</figcaption>
+      </td>
+      <td>
+        <img src="output/mufhuahua.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Mufhuahua</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>This is a hybrid of a chihuahua (high pass) and a pomeranian (low pass). This a failure case because the original images have the dogs facing different ways, so even though their eyes are aligned, the resulting image does not look very attractive.</p>
+<div>
+  <table>
+    <tr>
+      <td>
+        <img src="exampls/chihuahua.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Chihuahua</figcaption>
+      </td>
+      <td>
+        <img src="exampls/pom.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Pomeranian</figcaption>
+      </td>
+      <td>
+        <img src="output/pomhuahua.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Pomhuahua</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<h3 align="middle">Part 2.3: Gaussian and Laplacian Stacks</h3>
+
+<p>I implemented Gaussian and Laplacian stacks on the sample image of Lincoln and Gaia. A Gaussian stack is constructed from repeatedly applying a Gaussian filter to an image, so the image becomes blurrier with each step of the stack. It is the same concept as a Gaussian pyramid except there is no downsampling. Each level of the Laplacian stack is created by taking the difference between two adjacent layers of the Gaussian stack. This represents the frequency gradient: high frequencies at the top layers of the pyramid and low frequencies at the bottom.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="output/stack0.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/stack1.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/stack2.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/stack3.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 4</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="output/laplac0.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/laplac1.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/laplac2.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/laplac3.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 4</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>Below is the constructed Gaussian and Laplacian stacks for one of my hybrid images from 2.2.</p>
+
+<div>
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="output/tk_stack0.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_stack1.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_stack2.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_stack3.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Gaussian Stack Level 4</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="output/tk_laplac0.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_laplac1.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_laplac2.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/tk_laplac3.jpg" align="middle" width="200px"/>
+        <figcaption align="middle">Laplacian Stack Level 4</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<h3 align="middle">Part 2.4: Multiresolution Blending</h3>
+
+<p>I implemented blending as described in the Oliva et al. paper. Given two images to blend into one, I created mask to determine the boundaries to be blurred for the blended result. For the orange and the apple, this was straight down the middle. After creating the mask, I had to construct the Gaussian stack for it, as well as the Gaussian and Laplacian stacks for each image. I formed a combined Laplacian stack by using the Gaussian stack of the mask as weights for a linear combination of the images' Laplacian stacks. Finally, I put it all together by expanding and summing the levels from the combined Laplacian pyramid, using the combined final layer of the images' Gaussian stack as a base. This gave me the blended orapple.</p>
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/apple.jpeg" align="middle" width="400px"/>
+        <figcaption align="middle">Apple</figcaption>
+      </td>
+      <td>
+        <img src="exampls/orange.jpeg" align="middle" width="400px"/>
+        <figcaption align="middle">Orange</figcaption>
+      </td>
+      <td>
+        <img src="output/oraple.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Orapple</figcaption>
+      </td>
+    </tr>
+    <br>
+    <tr>
+      <td>
+        <img src="exampls/jungkook.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Jungkook</figcaption>
+      </td>
+      <td>
+        <img src="exampls/taehyung.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Taehyung</figcaption>
+      </td>
+      <td>
+        <img src="output/blended_taekook.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Taekook</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p> The below image (inspired by the Oliva et al. paper) was created using an irregular mask.</p>
+<div>
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="exampls/woman.png" align="middle" width="400px"/>
+        <figcaption align="middle">Woman</figcaption>
+      </td>
+      <td>
+        <img src="exampls/hand.png" align="middle" width="400px"/>
+        <figcaption align="middle">Hand</figcaption>
+      </td>
+    </tr>
+      <td>
+        <img src="exampls/mask.png" align="middle" width="400px"/>
+        <figcaption align="middle">Irregular mask</figcaption>
+      </td>
+      <td>
+        <img src="output/blended_handeye.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Eye in hand</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<p> Below illustrates the process of creating the Laplacian stack for the apple and orange as well as the combined Laplacian stack.</p>
+<div>
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="output/ap_laplac0.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Apple Laplacian Stack level 0</figcaption>
+      </td>
+      <td>
+        <img src="output/or_laplac0.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Orange Laplacian Stack level 0</figcaption>
+      </td>
+      <td>
+        <img src="output/orap_laplac0.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Oraple Laplacian Stack level 0</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/ap_laplac1.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Apple Laplacian Stack level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/or_laplac1.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Orange Laplacian Stack level 1</figcaption>
+      </td>
+      <td>
+        <img src="output/orap_laplac1.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Oraple Laplacian Stack level 1</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/ap_laplac2.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Apple Laplacian Stack level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/or_laplac2.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Orange Laplacian Stack level 2</figcaption>
+      </td>
+      <td>
+        <img src="output/orap_laplac2.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Oraple Laplacian Stack level 2</figcaption>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <img src="output/ap_laplac3.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Apple Laplacian Stack level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/or_laplac3.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Orange Laplacian Stack level 3</figcaption>
+      </td>
+      <td>
+        <img src="output/orap_laplac3.jpg" align="middle" width="400px"/>
+        <figcaption align="middle">Oraple Laplacian Stack level 3</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+<h3 align="middle">Extra</h3>
+<p>The most important thing that I learned from this project is that image processing takes a lot of time and playing around with the variables. For example, I spent quite a good amount not just writing code for 2.2 hybrid images, but tinkering with how big my Gaussian filter was, what cutoff frequency to use, and even choosing which points to align the images with. After putting in all of that work, the end result was very satisfying.</p>
+</body>
+</html>
